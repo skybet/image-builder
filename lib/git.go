@@ -3,7 +3,10 @@
 package lib
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"path"
 
@@ -152,6 +155,55 @@ func (g *GitClient) RemoveNonBuildPaths(paths []string) (roots []string, err err
 		if yes {
 			roots = append(roots, value)
 		}
+	}
+	return
+}
+
+func (g *GitClient) GetTarAtPath(dirpath string) (*bytes.Buffer, error) {
+	b := new(bytes.Buffer)
+	tw := tar.NewWriter(b)
+	defer tw.Close()
+
+	ta, err := g.commit.Tree()
+	if err != nil {
+		return b, err
+	}
+	tb, err := ta.Tree(dirpath)
+	if err != nil {
+		return b, err
+	}
+	tb.Files().ForEach(func(f *object.File) error {
+		if err := g.addFile(tw, f); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err := tw.Close(); err != nil {
+		return b, err
+	}
+	log.Debugf("Tar archive is %d bytes long", b.Len())
+	return b, err
+}
+
+func (g *GitClient) addFile(tw *tar.Writer, f *object.File) (err error) {
+	log.Debugf("Adding %s to tar archive", f.Name)
+	// Write the header to the tarball archive
+	header := new(tar.Header)
+	header.Name = f.Name
+	header.Size = f.Size
+	header.Mode = int64(f.Mode)
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+
+	// Copy the file data to the tarball
+	reader, err := f.Reader()
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	if _, err := io.Copy(tw, reader); err != nil {
+		return err
 	}
 	return
 }

@@ -53,6 +53,7 @@ var RootCmd = &cobra.Command{
 		// We get the latest commit and diff it with it's parent commit(s) to get a list of
 		// paths which have changed. After popping off the filename and deduping, we have a list of
 		// directories containing changes
+		log.Info("Searching latest commit for changes to Docker repositories")
 		dirs, err := git.DirsChanged()
 		if err != nil {
 			log.Fatalf("Error looking for changes: %s", err)
@@ -65,7 +66,15 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error filtering out directories without a Dockerfile: %s", err)
 		}
-		fmt.Printf("%v\n", roots)
+
+		log.Info("Creating tar archives to send to Docker daemon")
+		for _, p := range roots {
+			log.Info(p)
+			_, err := git.GetTarAtPath(p)
+			if err != nil {
+				log.Fatalf("Error getting tar archive at %s: %s", p, err)
+			}
+		}
 	},
 }
 
