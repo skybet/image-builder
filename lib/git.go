@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -108,25 +110,43 @@ func (g *GitClient) FilesChanged() (*object.Changes, error) {
 	return &changes, err
 }
 
-// DirsChanged takes a slice of file paths and returns a slice of the directories containing those files
+// DirsChanged takes a slice of file paths and returns a slice of the directories containing those files and also the parents
+// of each to account for when a file is changed in a subdir of a repository
 func (g *GitClient) DirsChanged() (dirs []string, err error) {
 	changes, err := g.FilesChanged()
 	if err != nil {
 		return
 	}
 	for _, c := range *changes {
+		var d string
 		if c.From.Name != "" {
-			dirs = append(dirs, path.Dir(c.From.Name))
+			d = path.Dir(c.From.Name)
+			dirs = append(dirs, d)
+			dirs = append(dirs, g.parents(d, []string{})...)
 		}
 
 		if c.To.Name != "" {
-			dirs = append(dirs, path.Dir(c.To.Name))
+			d = path.Dir(c.To.Name)
+			dirs = append(dirs, d)
+			dirs = append(dirs, g.parents(d, []string{})...)
 		}
 	}
 	return Dedup(dirs), err
 }
 
-// PathHaDockerfile determines if there is there a file called Dockerfile at the specified path
+func (g *GitClient) parents(p string, state []string) []string {
+	if p == string(os.PathSeparator) {
+		return state
+	}
+
+	parts := strings.Split(p, string(os.PathSeparator))
+	parent := strings.Join(parts[0:(len(parts)-1)], string(os.PathSeparator))
+	state = append(state, parent)
+	//return g.parents(parent, state)
+	return state
+}
+
+// PathHasDockerfile determines if there is there a file called Dockerfile at the specified path
 func (g *GitClient) PathHasDockerfile(filepath string) (yes bool, err error) {
 	t, err := g.commit.Tree()
 	if err != nil {
@@ -147,6 +167,7 @@ func (g *GitClient) PathHasDockerfile(filepath string) (yes bool, err error) {
 // RemoveNoBuildPaths takes a slice of directories and removes any not containing a Dockerfile
 func (g *GitClient) RemoveNonBuildPaths(paths []string) (roots []string, err error) {
 	for _, value := range paths {
+
 		log.Debugf("Checking path: %s", value)
 		yes, err := g.PathHasDockerfile(value)
 		if err != nil {
