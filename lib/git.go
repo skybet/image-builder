@@ -207,3 +207,11 @@ func (g *GitClient) addFile(tw *tar.Writer, f *object.File) (err error) {
 	}
 	return
 }
+
+func (g *GitClient) GenerateTags(path string) []string {
+	hash := g.ref.Hash().String()
+	return []string{
+		fmt.Sprintf("%s:%s", path, g.ref.Name().Short()),
+		fmt.Sprintf("%s:%s", path, hash[0:7]),
+	}
+}

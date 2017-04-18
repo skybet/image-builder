@@ -67,13 +67,34 @@ var RootCmd = &cobra.Command{
 			log.Fatalf("Error filtering out directories without a Dockerfile: %s", err)
 		}
 
-		log.Info("Creating tar archives to send to Docker daemon")
-		for _, p := range roots {
-			log.Info(p)
-			_, err := git.GetTarAtPath(p)
-			if err != nil {
-				log.Fatalf("Error getting tar archive at %s: %s", p, err)
+		docker, err := lib.GetDockerClient(viper.GetString("docker-host"))
+		if err != nil {
+			log.Fatalf("Error creating docker client: %s", err)
+		}
+
+		if len(roots) > 0 {
+
+			log.Info("Creating tar archives to send to Docker daemon")
+			for _, p := range roots {
+				log.Info(p)
+				tar, err := git.GetTarAtPath(p)
+				if err != nil {
+					log.Fatalf("Error getting tar archive at %s: %s", p, err)
+				}
+
+				tags := git.GenerateTags(p)
+				log.Infof("Building %s", p)
+				if err := docker.Build(tar, tags); err != nil {
+					log.Fatalf("Error building image at %s: %s", p, err)
+				}
+
+				log.Infof("Pushing %v", tags)
+				if err := docker.Push(p); err != nil {
+					log.Fatalf("Error pushing image at %s: %s", p, err)
+				}
 			}
+		} else {
+			log.Info("No changes found")
 		}
 	},
 }
@@ -89,8 +110,8 @@ func Execute() {
 
 func init() {
 	var (
-		debug, json                bool
-		gitUrl, gitBranch, keyPath string
+		debug, json                            bool
+		gitUrl, gitBranch, keyPath, dockerHost string
 	)
 
 	cobra.OnInitialize(initConfig)
@@ -113,6 +134,10 @@ func init() {
 
 	RootCmd.PersistentFlags().StringVarP(&keyPath, "key-path", "k", "", "Path to private key")
 	viper.BindPFlag("key-path", RootCmd.PersistentFlags().Lookup("key-path"))
+
+	RootCmd.PersistentFlags().StringVarP(&dockerHost, "docker-host", "u", "unix:///var/run/docker.sock", "Docker host/socket")
+	viper.BindPFlag("docker-host", RootCmd.PersistentFlags().Lookup("docker-host"))
+	viper.SetDefault("docker-host", "unix:///var/run/docker.sock")
 }
 
 // initConfig reads in config file and ENV variables if set.
