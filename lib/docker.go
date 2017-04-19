@@ -17,11 +17,14 @@ import (
 
 type buildResponse struct {
 	Stream string `json:"stream"`
+	Error  string `json:"error,omitempty"`
+	Status string `json:"status,omitempty"`
 }
 
 type pushResponse struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 
 type DockerClient struct {
@@ -64,6 +67,9 @@ func (c *DockerClient) Build(buildCtx io.Reader, tags []string) (err error) {
 		if err := json.Unmarshal([]byte(txt), &r); err != nil {
 			return fmt.Errorf("Error decoding json from build image API: %s", err)
 		}
+		if r.Error != "" {
+			return fmt.Errorf("Build API: %s", r.Error)
+		}
 		log.Debug(strings.TrimSuffix(r.Stream, "\n"))
 	}
 	if err := scanner.Err(); err != nil {
@@ -89,6 +95,9 @@ func (c *DockerClient) Push(repo string) (err error) {
 		var r pushResponse
 		if err := json.Unmarshal([]byte(txt), &r); err != nil {
 			return fmt.Errorf("Error decoding json from push image API: %s", err)
+		}
+		if r.Error != "" {
+			return fmt.Errorf("Push API: %s", r.Error)
 		}
 		log.WithFields(log.Fields{
 			"layer": r.Id,
