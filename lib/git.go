@@ -161,6 +161,7 @@ func (g *GitClient) PathLookUpDockerfile(pathtofile string) (yes bool, location 
 			log.Debugf("Recursive search did not yield any valid paths")
 			return false, "", nil
 		}
+		// Call this method again with the next dir up.
 		return g.PathLookUpDockerfile(filepath.Dir(filepath.Clean(pathtofile)))
 	} else if err != nil {
 		log.Errorf("Failed to search path: %s, error: %v", pathtofile, err)
@@ -172,7 +173,6 @@ func (g *GitClient) PathLookUpDockerfile(pathtofile string) (yes bool, location 
 
 // RemoveNoBuildPaths takes a slice of directories and removes any not containing a Dockerfile
 func (g *GitClient) RemoveNonBuildPaths(paths []string) (roots []string, err error) {
-	log.Debugf("Paths: %v", paths)
 	for _, value := range paths {
 
 		log.Debugf("Checking path: %s", value)
