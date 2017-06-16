@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -146,35 +147,41 @@ func (g *GitClient) parents(p string, state []string) []string {
 	return state
 }
 
-// PathHasDockerfile determines if there is there a file called Dockerfile at the specified path
-func (g *GitClient) PathHasDockerfile(filepath string) (yes bool, err error) {
+// PathLookUpDockerfile Recursively search the path up for Dockerfile
+func (g *GitClient) PathLookUpDockerfile(pathtofile string) (yes bool, location string, err error) {
 	t, err := g.commit.Tree()
 	if err != nil {
 		return
 	}
 
-	_, err = t.File(path.Join(filepath, "Dockerfile"))
+	_, err = t.File(path.Join(pathtofile, "Dockerfile"))
 	if err == object.ErrFileNotFound {
-		log.Debugf("No Dockerfile found at path: %s", filepath)
-		return false, nil
+		log.Debugf("No Dockerfile found at path: %s", pathtofile)
+		if pathtofile == "." {
+			log.Debugf("Recursive search did not yield any valid paths")
+			return false, "", nil
+		}
+		return g.PathLookUpDockerfile(filepath.Dir(filepath.Clean(pathtofile)))
 	} else if err != nil {
+		log.Errorf("Failed to search path: %s, error: %v", pathtofile, err)
 		return
 	}
-	log.Debugf("Found Dockerfile at path: %s", filepath)
-	return true, nil
+	log.Debugf("Found Dockerfile at path: %s", pathtofile)
+	return true, pathtofile, nil
 }
 
 // RemoveNoBuildPaths takes a slice of directories and removes any not containing a Dockerfile
 func (g *GitClient) RemoveNonBuildPaths(paths []string) (roots []string, err error) {
+	log.Debugf("Paths: %v", paths)
 	for _, value := range paths {
 
 		log.Debugf("Checking path: %s", value)
-		yes, err := g.PathHasDockerfile(value)
+		yes, location, err := g.PathLookUpDockerfile(value)
 		if err != nil {
 			return roots, err
 		}
 		if yes {
-			roots = append(roots, value)
+			roots = append(roots, location)
 		}
 	}
 	return
