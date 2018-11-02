@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/adampointer/image-builder/lib"
+	"github.com/skybet/image-builder/lib"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
