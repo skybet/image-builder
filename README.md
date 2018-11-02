@@ -22,8 +22,17 @@ Flags:
       --config string        config file (default is $HOME/.image-builder.yaml)
   -d, --debug                Debug mode
   -u, --docker-host string   Docker host/socket (default "unix:///var/run/docker.sock")
+  -a, --docker-auth string   Base64 encoded string (see below)
   -b, --git-branch string    Git branch to build (default "master")
   -g, --git-url string       Git repo to build
   -j, --json                 Log in json format
   -k, --key-path string      Path to private key
 ```
+
+## Authentication
+
+If your Docker repository requires authentication then you will need to pass in the docker-auth string.
+
+To generate this, you'll need a username, a password and an email address:
+
+`echo '{"username": "alice", "password":"MySecurePassword1!", "email":"alice@example.com"}' | base64`

@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/adampointer/image-builder/cmd"
+import "github.com/skybet/image-builder/cmd"
 
 func main() {
 	cmd.Execute()
