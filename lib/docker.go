@@ -78,10 +78,10 @@ func (c *DockerClient) Build(buildCtx io.Reader, tags []string) (err error) {
 	return
 }
 
-func (c *DockerClient) Push(repo string) (err error) {
+func (c *DockerClient) Push(repo string, auth string) (err error) {
 	opts := types.ImagePushOptions{
 		All:          true,
-		RegistryAuth: "abc",
+		RegistryAuth: auth,
 	}
 	resp, err := c.cli.ImagePush(context.Background(), repo, opts)
 	if err != nil {

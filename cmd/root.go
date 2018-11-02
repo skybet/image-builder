@@ -89,7 +89,7 @@ var RootCmd = &cobra.Command{
 				}
 
 				log.Infof("Pushing %v", tags)
-				if err := docker.Push(p); err != nil {
+				if err := docker.Push(p, viper.GetString("docker-auth")); err != nil {
 					log.Fatalf("Error pushing image at %s: %s", p, err)
 				}
 			}
@@ -111,7 +111,7 @@ func Execute() {
 func init() {
 	var (
 		debug, json                            bool
-		gitUrl, gitBranch, keyPath, dockerHost string
+		gitUrl, gitBranch, keyPath, dockerHost, dockerAuth string
 	)
 
 	cobra.OnInitialize(initConfig)
@@ -138,6 +138,10 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&dockerHost, "docker-host", "u", "unix:///var/run/docker.sock", "Docker host/socket")
 	viper.BindPFlag("docker-host", RootCmd.PersistentFlags().Lookup("docker-host"))
 	viper.SetDefault("docker-host", "unix:///var/run/docker.sock")
+
+	RootCmd.PersistentFlags().StringVarP(&dockerAuth, "docker-auth", "a", "abc", "base64 encoded credentials for the registry")
+	viper.BindPFlag("docker-auth", RootCmd.PersistentFlags().Lookup("docker-auth"))
+	viper.SetDefault("docker-auth", "abc")
 }
 
 // initConfig reads in config file and ENV variables if set.
